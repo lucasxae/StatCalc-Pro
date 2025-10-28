@@ -1,73 +1,64 @@
-# Welcome to your Lovable project
+# StatCalc Pro
 
-## Project info
+StatCalc Pro é uma ferramenta cliente (rodando no navegador) para análise estatística rápida de estudos clínicos — criada para responder a um pedido de uma médica que precisava calcular curvas ROC, AUC e métricas resumidas a partir de dados tabulares para suas pesquisas científicas.
 
-**URL**: https://lovable.dev/projects/f34da6cd-66c9-447d-a8f8-01c4795383df
+Este projeto transforma um fluxo manual (planilhas e cálculos) em uma interface simples: faça upload do seu arquivo Excel (.xlsx/.xls), o aplicativo calcula sensibilidade, especificidade, TPR, FPR, estima a AUC, gera a curva ROC e permite exportar os resultados (XLSX/CSV) e o gráfico.
 
-## How can I edit this code?
+Motivação
+---------
+Uma médica de pesquisa precisava de uma ferramenta leve, segura e que rodasse offline no navegador para processar resultados de estudos (VP, FP, VN, FN) sem enviar dados a servidores externos. Este projeto fornece exatamente isso: processamento no cliente, preservando privacidade dos dados e simplicidade de uso.
 
-There are several ways of editing your application.
+Funcionalidades principais
+-------------------------
+- Upload de arquivos Excel (.xlsx / .xls)
+- Cálculo automático de sensibilidade, especificidade, TPR (sensibilidade) e FPR (1 - especificidade)
+- Estimativa de AUC pelo método do trapézio
+- Geração de gráfico ROC interativo (com tooltip) e opção de exportar como PNG
+- Exportar resultados filtrados para Excel (.xlsx) ou CSV
+- Histórico local de análises (armazenado em localStorage) com opção de remover entradas
+- Roda totalmente no cliente — compatível com GitHub Pages
 
-**Use Lovable**
+Formato esperado
+----------------
+O arquivo Excel deve conter, por estudo, as colunas: `id`, `tp`, `fp`, `tn`, `fn`. O parser tenta aceitar variações comuns de nomes de colunas, mas usar estes nomes exatos evita problemas.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/f34da6cd-66c9-447d-a8f8-01c4795383df) and start prompting.
+Como usar localmente
+--------------------
+Pré-requisitos: Node.js (recomendo usar nvm) e npm
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+git clone <SEU_REPO>
+cd StatCalc-Pro
+npm install
 npm run dev
+# abra http://localhost:8080 e faça upload do .xlsx
 ```
 
-**Edit a file directly in GitHub**
+Ao processar um arquivo, o resultado final é salvo temporariamente em `sessionStorage` e também é registrado em `localStorage` como histórico de análises.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Deploy (GitHub Pages)
+---------------------
+O aplicativo é 100% client-side, então é compatível com GitHub Pages. Antes de publicar, certifique-se que em `vite.config.ts` o `base` está configurado para o caminho correto do repositório (por exemplo `"/StatCalc-Pro/"`).
 
-**Use GitHub Codespaces**
+Exemplo rápido de deploy (usando Actions ou gh-pages):
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+1. Atualize o lockfile localmente: `npm install` e `git add package-lock.json`.
+2. Commit + push para `main`.
+3. A Action `gh-pages` (se estiver configurada) fará o build e publicará `dist/` na branch `gh-pages`.
 
-## What technologies are used for this project?
+Privacidade e segurança
+----------------------
+Todos os cálculos são feitos no navegador. Nenhum dado é enviado a servidores externos por padrão. Isso torna a ferramenta adequada para dados sensíveis de pesquisa, desde que você não compartilhe o arquivo resultante sem anonimização quando necessário.
 
-This project is built with:
+Contribuições e contato
+-----------------------
+Se você quiser melhorar a ferramenta, abrir issues ou enviar pull requests é bem-vindo. Se precisar que eu personalize algum comportamento (nomes de colunas diferentes, formatos de export, integração com repositórios privados), me avise.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Desenvolvedor
+-------------
+Projeto mantido por Lucas (GitHub: `lucasxae`).
 
-## How can I deploy this project?
+Licença
+-------
+Este projeto está disponível sob a licença MIT — sinta-se livre para usar e adaptar para propósitos de pesquisa.
 
-Simply open [Lovable](https://lovable.dev/projects/f34da6cd-66c9-447d-a8f8-01c4795383df) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
