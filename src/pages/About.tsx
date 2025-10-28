@@ -10,23 +10,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 const About = () => {
   const team = [
     {
-      name: "Dr. Eleanor Vance",
-      role: "Lead Researcher, MD, PhD",
-      description: "Specializing in biostatistics and clinical trial design.",
-      initials: "EV",
-    },
-    {
-      name: "Dr. Ben Carter",
-      role: "Software Architect",
-      description: "Expert in secure data platforms for medical applications.",
-      initials: "BC",
-    },
-    {
-      name: "Dr. Aisha Khan",
-      role: "UX/UI Specialist",
-      description: "Focused on creating intuitive and accessible clinical tools.",
-      initials: "AK",
-    },
+      name: "Lucas Barros",
+      role: "Back-end and AI Software Engineer",
+      description: "Desenvolvedor Back-end, engenheiro de IA e Automações",
+      initials: "LB",
+      image: "/3b54d4ec-c999-48f7-9fa5-f94d05ab2b54.jpg",
+    }
   ];
 
   return (
@@ -64,6 +53,7 @@ const About = () => {
                   <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
                     {member.initials}
                   </AvatarFallback>
++                  <AvatarImage src={member.image} alt={member.name} />
                 </Avatar>
                 <div>
                   <h3 className="font-bold text-lg">{member.name}</h3>

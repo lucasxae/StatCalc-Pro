@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileUp, X, Sparkles, BarChart3 } from "lucide-react";
@@ -7,23 +7,58 @@ import { toast } from "sonner";
 
 const Calculator = () => {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const navigate = useNavigate();
 
   const handleFileSelect = () => {
-    // Mock file selection
-    setSelectedFile("patient_data_q3.xlsx");
-    toast.success("File uploaded successfully");
+    inputRef.current?.click();
+  };
+
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.name.endsWith(".xlsx") && !file.name.endsWith(".xls")) {
+      toast.error("Por favor selecione um arquivo Excel (.xlsx ou .xls)");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      toast.loading("Enviando arquivo...");
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        throw new Error(`Upload falhou: ${res.statusText}`);
+      }
+      const json = await res.json();
+      // salva resultado temporário para a página de resultados
+      sessionStorage.setItem("results", JSON.stringify(json));
+      setSelectedFile(file.name);
+      toast.success("Arquivo enviado com sucesso");
+    } catch (err) {
+      console.error(err);
+      toast.error("Falha ao enviar arquivo");
+    }
   };
 
   const handleProcess = () => {
-    toast.success("Processing data...");
-    setTimeout(() => {
-      navigate("/results");
-    }, 1500);
+    const results = sessionStorage.getItem("results");
+    if (!results) {
+      toast.error("Nenhum resultado disponível. Faça upload primeiro.");
+      return;
+    }
+    toast.success("Processamento concluído");
+    // navega para a página de resultados (ela irá ler sessionStorage)
+    navigate("/results");
   };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
+      <input ref={inputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={onFileChange} />
       <div className="text-center">
         <h1 className="text-4xl font-bold text-foreground mb-3">
           Area Under the ROC Curve (AUC) Calculator
@@ -74,7 +109,10 @@ const Calculator = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setSelectedFile(null)}
+                  onClick={() => {
+                    setSelectedFile(null);
+                    sessionStorage.removeItem("results");
+                  }}
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -97,7 +135,7 @@ const Calculator = () => {
                 <p className="text-sm text-muted-foreground mb-2">
                   AREA UNDER THE ROC CURVE (AUC)
                 </p>
-                <div className="text-7xl font-bold text-primary mb-4">0.927</div>
+                <div className="text-7xl font-bold text-primary mb-4">—</div>
                 <div className="flex gap-3 justify-center flex-wrap">
                   <Button variant="outline">
                     <BarChart3 className="mr-2 h-4 w-4" />

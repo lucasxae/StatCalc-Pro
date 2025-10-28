@@ -1,4 +1,5 @@
-import { useState } from "react";
+// ...existing code...
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,16 +12,54 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { studiesWithMetrics } from "@/data/studiesData";
+// import { studiesWithMetrics } from "@/data/studiesData"; // REMOVED - agora usamos dados reais via API/sessionStorage
 
 const Results = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [studies, setStudies] = useState<any[]>([]);
+  const [summary, setSummary] = useState<{ avg_sensitivity?: number; avg_specificity?: number; auc?: number }>({});
   const itemsPerPage = 10;
 
+  useEffect(() => {
+    const loadFromSession = () => {
+      const raw = sessionStorage.getItem("results");
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          setStudies(parsed.studies || []);
+          setSummary(parsed.summary || {});
+          return true;
+        } catch (e) {
+          console.error("Falha ao parsear results do sessionStorage", e);
+        }
+      }
+      return false;
+    };
+
+    const loaded = loadFromSession();
+    if (!loaded) {
+      // fallback: tenta buscar a API (se existir)
+      fetch("/api/results")
+        .then((r) => {
+          if (!r.ok) throw new Error("no results");
+          return r.json();
+        })
+        .then((json) => {
+          setStudies(json.studies || []);
+          setSummary(json.summary || {});
+        })
+        .catch(() => {
+          // manter array vazio se nada encontrado
+          setStudies([]);
+          setSummary({});
+        });
+    }
+  }, []);
+
   // Filter studies based on search
-  const filteredStudies = studiesWithMetrics.filter((study) =>
-    study.id.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredStudies = studies.filter((study) =>
+    (study.id || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Pagination
@@ -29,16 +68,8 @@ const Results = () => {
   const endIndex = startIndex + itemsPerPage;
   const currentStudies = filteredStudies.slice(startIndex, endIndex);
 
-  // Calculate summary statistics
-  const avgSensitivity =
-    studiesWithMetrics.reduce((sum, s) => sum + s.sensitivity!, 0) /
-    studiesWithMetrics.length;
-  const avgSpecificity =
-    studiesWithMetrics.reduce((sum, s) => sum + s.specificity!, 0) /
-    studiesWithMetrics.length;
-
   const formatNumber = (num: number, decimals: number = 6) => {
-    return num.toFixed(decimals);
+    return Number(num).toFixed(decimals);
   };
 
   return (
@@ -49,7 +80,7 @@ const Results = () => {
             Análise Estatística de Estudos
           </h1>
           <p className="text-muted-foreground">
-            Análise baseada em {studiesWithMetrics.length} estudos elegíveis - Dados de VP, FP, VN, FN
+            Análise baseada em {studies.length} estudos elegíveis - Dados de VP, FP, VN, FN
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -79,7 +110,7 @@ const Results = () => {
             </CardHeader>
             <CardContent>
               <div className="text-4xl font-bold text-primary">
-                {studiesWithMetrics.length}
+                {studies.length}
               </div>
               <p className="text-xs text-muted-foreground mt-1">Artigos analisados</p>
             </CardContent>
@@ -93,7 +124,7 @@ const Results = () => {
             </CardHeader>
             <CardContent>
               <div className="text-4xl font-bold text-primary">
-                {formatNumber(avgSensitivity, 4)}
+                {summary.avg_sensitivity ? formatNumber(summary.avg_sensitivity, 4) : "—"}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 VP / (VP + FN)
@@ -109,7 +140,7 @@ const Results = () => {
             </CardHeader>
             <CardContent>
               <div className="text-4xl font-bold text-primary">
-                {formatNumber(avgSpecificity, 4)}
+                {summary.avg_specificity ? formatNumber(summary.avg_specificity, 4) : "—"}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 VN / (VN + FP)
@@ -124,118 +155,14 @@ const Results = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-4xl font-bold text-primary">0.89</div>
+              <div className="text-4xl font-bold text-primary">
+                {summary.auc ? formatNumber(summary.auc, 3) : "—"}
+              </div>
               <p className="text-xs text-muted-foreground mt-1">AUC estimada</p>
             </CardContent>
           </Card>
         </div>
       </div>
-
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <CardTitle className="text-2xl">Dados dos Estudos</CardTitle>
-            <div className="relative w-full sm:w-80">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar estudo..."
-                className="pl-9"
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="border rounded-lg overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="font-bold w-12">#</TableHead>
-                  <TableHead className="font-bold min-w-[200px]">Estudo</TableHead>
-                  <TableHead className="font-bold text-center">VP</TableHead>
-                  <TableHead className="font-bold text-center">FP</TableHead>
-                  <TableHead className="font-bold text-center">VN</TableHead>
-                  <TableHead className="font-bold text-center">FN</TableHead>
-                  <TableHead className="font-bold text-center">Sensibilidade</TableHead>
-                  <TableHead className="font-bold text-center">Especificidade</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {currentStudies.map((study, index) => (
-                  <TableRow key={study.id} className="hover:bg-muted/30">
-                    <TableCell className="font-medium text-muted-foreground">
-                      {startIndex + index}
-                    </TableCell>
-                    <TableCell className="font-medium">{study.id}</TableCell>
-                    <TableCell className="text-center">{study.tp.toLocaleString()}</TableCell>
-                    <TableCell className="text-center">{study.fp.toLocaleString()}</TableCell>
-                    <TableCell className="text-center">{study.tn.toLocaleString()}</TableCell>
-                    <TableCell className="text-center">{study.fn.toLocaleString()}</TableCell>
-                    <TableCell className="text-center font-semibold text-primary">
-                      {formatNumber(study.sensitivity!)}
-                    </TableCell>
-                    <TableCell className="text-center font-semibold text-primary">
-                      {formatNumber(study.specificity!)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Pagination */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
-            <p className="text-sm text-muted-foreground">
-              Mostrando {startIndex + 1}-{Math.min(endIndex, filteredStudies.length)} de{" "}
-              {filteredStudies.length} estudos
-            </p>
-            <div className="flex gap-1 flex-wrap justify-center">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-              >
-                Anterior
-              </Button>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum;
-                if (totalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1;
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
-                } else {
-                  pageNum = currentPage - 2 + i;
-                }
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={currentPage === pageNum ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setCurrentPage(pageNum)}
-                  >
-                    {pageNum}
-                  </Button>
-                );
-              })}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-              >
-                Próxima
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Legend Card */}
       <Card className="bg-accent">
