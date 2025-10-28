@@ -4,9 +4,14 @@ import { Button } from "@/components/ui/button";
 import { FileUp, X, Sparkles, BarChart3 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
+import { computeMetrics, exportResultsJson } from "@/lib/metrics";
+import { Input } from "@/components/ui/input";
 
 const Calculator = () => {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [analysisName, setAnalysisName] = useState<string>("");
+  const [pendingResult, setPendingResult] = useState<any | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const navigate = useNavigate();
 
@@ -21,38 +26,64 @@ const Calculator = () => {
       toast.error("Por favor selecione um arquivo Excel (.xlsx ou .xls)");
       return;
     }
-
-    const formData = new FormData();
-    formData.append("file", file);
-
     try {
-      toast.loading("Enviando arquivo...");
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) {
-        throw new Error(`Upload falhou: ${res.statusText}`);
-      }
-      const json = await res.json();
-      // salva resultado temporário para a página de resultados
-      sessionStorage.setItem("results", JSON.stringify(json));
+      toast.loading("Processando arquivo no navegador...");
+      // read file as array buffer and parse using xlsx in browser
+      const arrayBuffer = await file.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: "array" });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const raw = XLSX.utils.sheet_to_json(sheet, { defval: null });
+
+      const rows = computeMetrics(raw as any[]);
+      const json = exportResultsJson(rows);
+
+      // set pending result and let user edit name before saving
+      setPendingResult(json);
       setSelectedFile(file.name);
-      toast.success("Arquivo enviado com sucesso");
+      setAnalysisName(file.name);
+      toast.success("Arquivo processado — edite o nome se quiser e clique 'Process Data'");
     } catch (err) {
       console.error(err);
-      toast.error("Falha ao enviar arquivo");
+      toast.error("Falha ao processar arquivo");
     }
   };
 
   const handleProcess = () => {
-    const results = sessionStorage.getItem("results");
-    if (!results) {
+    // use pendingResult if available, otherwise fallback to sessionStorage (backwards compat)
+    const json = pendingResult ?? (() => {
+      try {
+        const raw = sessionStorage.getItem("results");
+        return raw ? JSON.parse(raw) : null;
+      } catch { return null; }
+    })();
+    if (!json) {
       toast.error("Nenhum resultado disponível. Faça upload primeiro.");
       return;
     }
-    toast.success("Processamento concluído");
-    // navega para a página de resultados (ela irá ler sessionStorage)
+
+    // build session payload using possibly edited name
+    const date = new Date().toISOString().split("T")[0];
+    const name = analysisName || selectedFile || json.name || "Análise";
+    const sessionPayload = { ...json, name, date };
+    sessionStorage.setItem("results", JSON.stringify(sessionPayload));
+
+    // append to analyses history in localStorage (keep last 20)
+    try {
+      const entry = { id: Date.now(), name, date, auc: sessionPayload.summary?.auc ?? 0, studiesCount: (sessionPayload.studies || []).length };
+      const rawHist = localStorage.getItem("analysesHistory");
+      const hist = rawHist ? JSON.parse(rawHist) : [];
+      hist.unshift(entry);
+      const max = 20;
+      const sliced = hist.slice(0, max);
+      localStorage.setItem("analysesHistory", JSON.stringify(sliced));
+    } catch (e) {
+      console.error("Falha ao atualizar histórico de análises", e);
+    }
+
+    toast.success("Processamento salvo");
+    // clear pending result and navigate
+    setPendingResult(null);
     navigate("/results");
   };
 
@@ -112,10 +143,16 @@ const Calculator = () => {
                   onClick={() => {
                     setSelectedFile(null);
                     sessionStorage.removeItem("results");
+                    setPendingResult(null);
+                    setAnalysisName("");
                   }}
                 >
                   <X className="h-4 w-4" />
                 </Button>
+              </div>
+              <div className="mt-4">
+                <label className="text-sm font-medium mb-2 block">Nome da Análise (pode editar)</label>
+                <Input value={analysisName} onChange={(e) => setAnalysisName(e.target.value)} />
               </div>
               <div className="mt-4 flex justify-end">
                 <Button onClick={handleProcess} size="lg">

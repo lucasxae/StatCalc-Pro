@@ -1,14 +1,57 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, FileUp, BarChart3, FileText, TrendingUp } from "lucide-react";
+import { ArrowRight, FileUp, BarChart3, FileText, TrendingUp, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Dashboard = () => {
-  const recentAnalyses = [
-    { id: 1, name: "Patient_Data_Q4.csv", date: "2024-01-15", auc: 0.89 },
-    { id: 2, name: "Clinical_Trial_2024.xlsx", date: "2024-01-12", auc: 0.92 },
-    { id: 3, name: "Research_Dataset_Jan.csv", date: "2024-01-10", auc: 0.87 },
-  ];
+  // Load recent analyses from localStorage/history (fallback to sessionStorage)
+  const [history, setHistory] = useState<any[]>([]);
+  const [recentAnalyses, setRecentAnalyses] = useState<Array<{ id: number; name: string; date: string; auc: number }>>([]);
+
+  useEffect(() => {
+    try {
+      const rawHist = localStorage.getItem("analysesHistory");
+      if (rawHist) {
+        const parsed = JSON.parse(rawHist);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setHistory(parsed);
+          setRecentAnalyses(parsed.slice(0, 10).map((p: any, idx: number) => ({ id: p.id ?? idx + 1, name: p.name ?? "Análise", date: p.date ?? "", auc: p.auc ?? 0 })));
+          return;
+        }
+      }
+
+      // fallback: try single last result in sessionStorage
+      const raw = sessionStorage.getItem("results");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const auc = parsed?.summary?.auc ?? 0;
+        const date = parsed?.date ?? new Date().toISOString().split("T")[0];
+        const single = [{ id: Date.now(), name: parsed?.name ?? "Última análise", date, auc }];
+        setHistory(single);
+        setRecentAnalyses(single);
+      }
+    } catch (e) {
+      console.error("Falha ao carregar análises recentes", e);
+    }
+  }, []);
+
+  const totalAnalyses = history.length;
+  const avgAuc = history.length ? history.reduce((s, h) => s + (Number(h.auc) || 0), 0) / history.length : 0;
+  const totalRecords = history.reduce((s, h) => s + (Number(h.studiesCount) || 0), 0);
+  const reportsGenerated = history.length; // number of saved analyses (treated as generated reports)
+
+  const removeAnalysis = (id: number) => {
+    if (!confirm("Remover esta análise do histórico? Esta ação não pode ser desfeita.")) return;
+    const newHist = history.filter((h) => h.id !== id);
+    setHistory(newHist);
+    setRecentAnalyses(newHist.slice(0, 10).map((p: any, idx: number) => ({ id: p.id ?? idx + 1, name: p.name ?? "Análise", date: p.date ?? "", auc: p.auc ?? 0 })));
+    try {
+      localStorage.setItem("analysesHistory", JSON.stringify(newHist));
+    } catch (e) {
+      console.error("Falha ao salvar histórico após remoção", e);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -26,8 +69,8 @@ const Dashboard = () => {
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-primary">24</div>
-            <p className="text-xs text-muted-foreground mt-1">+3 from last month</p>
+            <div className="text-3xl font-bold text-primary">{totalAnalyses}</div>
+            <p className="text-xs text-muted-foreground mt-1">based on local history</p>
           </CardContent>
         </Card>
 
@@ -37,8 +80,8 @@ const Dashboard = () => {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-primary">0.88</div>
-            <p className="text-xs text-muted-foreground mt-1">Across all datasets</p>
+            <div className="text-3xl font-bold text-primary">{history.length ? avgAuc.toFixed(2) : "—"}</div>
+            <p className="text-xs text-muted-foreground mt-1">Across stored analyses</p>
           </CardContent>
         </Card>
 
@@ -48,8 +91,8 @@ const Dashboard = () => {
             <FileUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-primary">1.2K</div>
-            <p className="text-xs text-muted-foreground mt-1">Records analyzed</p>
+            <div className="text-3xl font-bold text-primary">{totalRecords.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground mt-1">Records analyzed (sum of studies)</p>
           </CardContent>
         </Card>
 
@@ -59,8 +102,8 @@ const Dashboard = () => {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-primary">18</div>
-            <p className="text-xs text-muted-foreground mt-1">PDF exports</p>
+            <div className="text-3xl font-bold text-primary">{reportsGenerated}</div>
+            <p className="text-xs text-muted-foreground mt-1">Saved analyses (local)</p>
           </CardContent>
         </Card>
       </div>
@@ -105,13 +148,16 @@ const Dashboard = () => {
                     <p className="font-medium text-sm">{analysis.name}</p>
                     <p className="text-xs text-muted-foreground">{analysis.date}</p>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right flex items-center gap-2">
                     <p className="text-sm font-bold text-primary">AUC: {analysis.auc}</p>
                     <Link to="/results">
                       <Button variant="link" size="sm" className="h-auto p-0 text-xs">
                         View Results
                       </Button>
                     </Link>
+                    <Button variant="ghost" size="sm" onClick={() => removeAnalysis(analysis.id)} title="Remover do histórico">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               ))}
