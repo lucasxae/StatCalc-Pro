@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, FileUp, BarChart3, FileText, TrendingUp, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowRight, FileUp, BarChart3, FileText, TrendingUp, Crown, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Dashboard = () => {
@@ -55,13 +56,34 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-4xl font-bold text-foreground mb-2">Dashboard</h1>
-        <p className="text-muted-foreground text-lg">
-          Welcome back! Start a new analysis or review your recent calculations.
-        </p>
-      </div>
-
+       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-bold text-foreground mb-2">Dashboard</h1>
+          <p className="text-muted-foreground text-lg">
+            Welcome back! Start a new analysis or review your recent calculations.
+          </p>
+        </div>
+        
+        <Link to="/pricing">
+          <Card className="cursor-pointer hover:border-primary transition-colors">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="bg-primary/10 p-2 rounded-lg">
+                <Crown className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-sm">Current Plan</span>
+                  <Badge variant="outline" className="text-xs">Free Trial</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Upgrade to unlock more features
+                </p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground ml-2" />
+            </CardContent>
+          </Card>
+        </Link>
+        </div>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

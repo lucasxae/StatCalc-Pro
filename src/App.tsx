@@ -10,6 +10,7 @@ import Results from "./pages/Results";
 import Help from "./pages/Help";
 import About from "./pages/About";
 import NotFound from "./pages/NotFound";
+import Pricing from "./pages/Pricing";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
         <Route path="/results" element={<Layout><Results /></Layout>} />
         <Route path="/help" element={<Layout><Help /></Layout>} />
         <Route path="/about" element={<Layout><About /></Layout>} />
+        <Route path="/pricing" element={<Pricing />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </TooltipProvider>
